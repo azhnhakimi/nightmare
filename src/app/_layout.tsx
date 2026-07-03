@@ -1,8 +1,10 @@
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { useTheme } from "@/theme/useTheme";
 import { getStatusBarStyle } from "@/utils/statusbar";
+import * as NavigationBar from "expo-navigation-bar";
 import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import "../../global.css";
 
 export default function RootLayout() {
@@ -16,6 +18,10 @@ export default function RootLayout() {
 function AppContent() {
   const { theme } = useTheme();
   const statusBarStyle = getStatusBarStyle(theme.background);
+
+  useEffect(() => {
+    NavigationBar.setButtonStyleAsync(statusBarStyle);
+  }, [statusBarStyle]);
 
   return (
     <>
