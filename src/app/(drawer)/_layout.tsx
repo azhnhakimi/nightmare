@@ -7,7 +7,7 @@ export default function DrawerLayout() {
       screenOptions={{
         swipeEnabled: true,
         headerShown: false,
-        swipeEdgeWidth: 100,
+        swipeEdgeWidth: 20,
       }}
       drawerContent={(props) => <SideDrawer {...props} />}
     >

@@ -46,7 +46,7 @@ export function SideDrawer({ state, navigation }: DrawerContentComponentProps) {
         style={[
           styles.drawerItemPressable,
           { backgroundColor: theme.surface },
-          !isActive && { opacity: 0.6 },
+          !isActive && { opacity: 0.7 },
           isActive && { backgroundColor: theme.surface },
         ]}
       >
@@ -81,6 +81,7 @@ export function SideDrawer({ state, navigation }: DrawerContentComponentProps) {
         paddingVertical: 12,
         backgroundColor: theme.background,
         marginRight: -1,
+        paddingTop: 22,
       }}
     >
       {/* <Image
