@@ -13,6 +13,7 @@ export const ThemeProvider = ({
   onLoaded?: () => void;
 }) => {
   const [themeName, setThemeName] = useState<ThemeName>("light");
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -22,6 +23,7 @@ export const ThemeProvider = ({
       } catch (e) {
         console.log("Failed to load theme", e);
       } finally {
+        setIsReady(true);
         onLoaded?.();
       }
     };
@@ -36,6 +38,10 @@ export const ThemeProvider = ({
       console.log("Failed to save theme", e);
     }
   };
+
+  if (!isReady) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider

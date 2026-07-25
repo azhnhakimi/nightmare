@@ -1,4 +1,5 @@
 import SwipeableItem from "@/components/ui/SwipeableItem";
+import { BOTTOM_SHEET_BUTTON_RESERVED_SPACE } from "@/components/ui/TasksCreationBottomSheet";
 import { useTheme } from "@/theme/useTheme";
 import Feather from "@expo/vector-icons/Feather";
 import React, { useCallback, useState } from "react";
@@ -9,6 +10,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSwipeableItemParams } from "react-native-swipeable-item";
 
 const NUM_ITEMS = 20;
@@ -82,6 +84,7 @@ function RowContent({
 }
 
 export default function DraggableFlatlist() {
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState(initialData);
 
   const toggleComplete = useCallback((id: number) => {
@@ -111,8 +114,10 @@ export default function DraggableFlatlist() {
       renderItem={renderItem}
       containerStyle={{
         paddingHorizontal: 12,
-        paddingVertical: 16,
-        height: "100%",
+        paddingVertical: 28,
+      }}
+      contentContainerStyle={{
+        paddingBottom: BOTTOM_SHEET_BUTTON_RESERVED_SPACE + insets.bottom,
       }}
       removeClippedSubviews={false}
       dragItemOverflow
