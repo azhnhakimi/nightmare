@@ -5,14 +5,17 @@ import {
   BottomSheetModal,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import React, { useCallback, useMemo, useRef } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import CalendarPickerModal from "./CalendarPickerModal";
+import CalendarPickerTrigger from "./CalendarPickerTrigger";
+import CategoriesPopupMenu from "./CategoriesPopupMenu";
 
 const BUTTON_SIZE = 60;
 const ABSOLUTE_INSETS = 30;
@@ -66,6 +69,32 @@ export default function TasksCreationBottomSheet() {
     [handleBackdropPress],
   );
 
+  const wantsCalendarOpenRef = useRef(false);
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+
+  const openCalendarPicker = useCallback(() => {
+    wantsCalendarOpenRef.current = true;
+    bottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const handleSheetDismiss = useCallback(() => {
+    if (wantsCalendarOpenRef.current) {
+      setCalendarModalVisible(true);
+    }
+  }, []);
+
+  const closeCalendarPicker = useCallback(() => {
+    setCalendarModalVisible(false);
+  }, []);
+
+  const handleCalendarModalHide = useCallback(() => {
+    wantsCalendarOpenRef.current = false;
+    bottomSheetModalRef.current?.present();
+  }, []);
+
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("All");
+
   return (
     <>
       <Pressable
@@ -95,6 +124,7 @@ export default function TasksCreationBottomSheet() {
           elevation: 0,
           shadowOpacity: 0,
         }}
+        onDismiss={handleSheetDismiss}
       >
         <BottomSheetView
           style={[
@@ -102,9 +132,41 @@ export default function TasksCreationBottomSheet() {
             { backgroundColor: theme.background },
           ]}
         >
-          <Text>Awesome 🎉</Text>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Type something..."
+            style={[
+              styles.textInputField,
+              { backgroundColor: theme.surface, color: theme.primaryText },
+            ]}
+            placeholderTextColor={theme.primaryText}
+          />
+
+          <View
+            style={{
+              flexDirection: "row",
+              marginVertical: 22,
+              justifyContent: "flex-start",
+              width: "100%",
+              gap: 14,
+              alignItems: "center",
+            }}
+          >
+            <CategoriesPopupMenu
+              activeCategory={category}
+              setActiveCategory={setCategory}
+            />
+            <CalendarPickerTrigger onOpen={openCalendarPicker} />
+          </View>
         </BottomSheetView>
       </BottomSheetModal>
+
+      <CalendarPickerModal
+        isModalVisible={calendarModalVisible}
+        onClose={closeCalendarPicker}
+        onModalHide={handleCalendarModalHide}
+      />
     </>
   );
 }
@@ -113,6 +175,8 @@ const styles = StyleSheet.create({
   contentContainer: {
     alignItems: "center",
     height: "100%",
+    paddingHorizontal: 18,
+    paddingTop: 8,
   },
   button: {
     borderRadius: 9999,
@@ -122,5 +186,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "absolute",
     right: ABSOLUTE_INSETS,
+  },
+  textInputField: {
+    width: "100%",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 60,
   },
 });
