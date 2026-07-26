@@ -3,22 +3,50 @@ import Entypo from "@expo/vector-icons/Entypo";
 import {
   BottomSheetBackdropProps,
   BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import React, {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
-  Extrapolation,
-  interpolate,
   useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AddSubtaskBtn from "./AddSubtaskBtn";
 import CalendarPickerModal from "./CalendarPickerModal";
 import CalendarPickerTrigger from "./CalendarPickerTrigger";
 import CategoriesPopupMenu from "./CategoriesPopupMenu";
+import SubtasksInput from "./SubtasksInput";
+import TaskCreationSubmitBtn from "./TaskCreationSubmitBtn";
+
+type Subtask = {
+  id: string;
+  title: string;
+};
+
+type SubtaskInputRef = ComponentRef<typeof BottomSheetTextInput> | null;
+type SubtaskInputRefMap = Record<string, SubtaskInputRef>;
 
 const BUTTON_SIZE = 60;
 const ABSOLUTE_INSETS = 30;
+const SUBTASK_ROW_HEIGHT = 56;
+const MAX_VISIBLE_SUBTASKS = 4;
+const SHEET_ANIMATION_DURATION = 150;
+const CONTENT_PADDING_TOP = 8;
+const TITLE_INPUT_HEIGHT = 60;
+const BUTTON_ROW_MARGIN_VERTICAL = 22;
+const BUTTON_ROW_HEIGHT_FALLBACK = 60;
+const HANDLE_AREA_HEIGHT = 24;
 
 export const BOTTOM_SHEET_BUTTON_RESERVED_SPACE =
   BUTTON_SIZE + ABSOLUTE_INSETS + 20;
@@ -27,15 +55,29 @@ export default function TasksCreationBottomSheet() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
+  const backdropOpacity = useSharedValue(0);
+
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const titleInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
 
   const handlePresentModalPress = useCallback(() => {
     bottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSheetChanges = useCallback((index: number) => {
-    // console.log("handleSheetChanges", index);
-  }, []);
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      backdropOpacity.value = withTiming(index >= 0 ? 0.6 : 0, {
+        duration: 200,
+      });
+
+      if (index === 0) {
+        setTimeout(() => {
+          titleInputRef.current?.focus();
+        }, SHEET_ANIMATION_DURATION);
+      }
+    },
+    [backdropOpacity],
+  );
 
   const handleBackdropPress = useCallback(() => {
     bottomSheetModalRef.current?.dismiss();
@@ -43,15 +85,10 @@ export default function TasksCreationBottomSheet() {
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => {
-      const { animatedIndex, style } = props;
+      const { style } = props;
 
       const containerAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: interpolate(
-          animatedIndex.value,
-          [-1, 0],
-          [0, 0.6],
-          Extrapolation.CLAMP,
-        ),
+        opacity: backdropOpacity.value,
       }));
 
       const containerStyle = useMemo(
@@ -66,7 +103,7 @@ export default function TasksCreationBottomSheet() {
         />
       );
     },
-    [handleBackdropPress],
+    [handleBackdropPress, backdropOpacity],
   );
 
   const wantsCalendarOpenRef = useRef(false);
@@ -75,12 +112,6 @@ export default function TasksCreationBottomSheet() {
   const openCalendarPicker = useCallback(() => {
     wantsCalendarOpenRef.current = true;
     bottomSheetModalRef.current?.dismiss();
-  }, []);
-
-  const handleSheetDismiss = useCallback(() => {
-    if (wantsCalendarOpenRef.current) {
-      setCalendarModalVisible(true);
-    }
   }, []);
 
   const closeCalendarPicker = useCallback(() => {
@@ -94,6 +125,80 @@ export default function TasksCreationBottomSheet() {
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("All");
+
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const subtaskInputRefs = useRef<SubtaskInputRefMap>({});
+  const previousSubtaskCountRef = useRef(0);
+
+  const addSubtask = useCallback(() => {
+    setSubtasks((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random()}`, title: "" },
+    ]);
+  }, []);
+
+  const updateSubtaskTitle = useCallback((id: string, title: string) => {
+    setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
+  }, []);
+
+  useEffect(() => {
+    if (subtasks.length > previousSubtaskCountRef.current) {
+      const newest = subtasks[subtasks.length - 1];
+      requestAnimationFrame(() => {
+        subtaskInputRefs.current[newest.id]?.focus();
+      });
+    }
+    previousSubtaskCountRef.current = subtasks.length;
+  }, [subtasks]);
+
+  const removeSubtask = useCallback((id: string) => {
+    setSubtasks((prev) => prev.filter((s) => s.id !== id));
+    delete subtaskInputRefs.current[id];
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setTitle("");
+    setCategory("All");
+    setSubtasks([]);
+    subtaskInputRefs.current = {};
+    previousSubtaskCountRef.current = 0;
+  }, []);
+
+  const handleSheetDismiss = useCallback(() => {
+    if (wantsCalendarOpenRef.current) {
+      setCalendarModalVisible(true);
+    } else {
+      resetForm();
+    }
+  }, [resetForm]);
+
+  const [buttonRowHeight, setButtonRowHeight] = useState(
+    BUTTON_ROW_HEIGHT_FALLBACK,
+  );
+
+  const handleButtonRowLayout = useCallback((e: LayoutChangeEvent) => {
+    const measuredHeight = e.nativeEvent.layout.height;
+    setButtonRowHeight((prev) =>
+      Math.abs(prev - measuredHeight) > 0.5 ? measuredHeight : prev,
+    );
+  }, []);
+
+  const visibleSubtaskCount = Math.min(subtasks.length, MAX_VISIBLE_SUBTASKS);
+  const subtasksHeight = visibleSubtaskCount * SUBTASK_ROW_HEIGHT;
+
+  const sheetHeight = useMemo(
+    () =>
+      HANDLE_AREA_HEIGHT +
+      CONTENT_PADDING_TOP +
+      TITLE_INPUT_HEIGHT +
+      subtasksHeight +
+      buttonRowHeight +
+      BUTTON_ROW_MARGIN_VERTICAL * 2 +
+      insets.bottom,
+    [subtasksHeight, buttonRowHeight, insets.bottom],
+  );
+
+  const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
 
   return (
     <>
@@ -113,18 +218,20 @@ export default function TasksCreationBottomSheet() {
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}
-        snapPoints={["80%"]}
-        backdropComponent={renderBackdrop}
+        snapPoints={snapPoints}
         enableDynamicSizing={false}
-        handleIndicatorStyle={{
-          backgroundColor: theme.primaryText,
-        }}
+        backdropComponent={renderBackdrop}
+        handleIndicatorStyle={{ backgroundColor: theme.primaryText }}
         backgroundStyle={{
           backgroundColor: theme.background,
           elevation: 0,
           shadowOpacity: 0,
         }}
         onDismiss={handleSheetDismiss}
+        keyboardBlurBehavior="restore"
+        keyboardBehavior="interactive"
+        animationConfigs={{ duration: SHEET_ANIMATION_DURATION }}
+        android_keyboardInputMode="adjustResize"
       >
         <BottomSheetView
           style={[
@@ -132,7 +239,8 @@ export default function TasksCreationBottomSheet() {
             { backgroundColor: theme.background },
           ]}
         >
-          <TextInput
+          <BottomSheetTextInput
+            ref={titleInputRef}
             value={title}
             onChangeText={setTitle}
             placeholder="Type something..."
@@ -140,24 +248,58 @@ export default function TasksCreationBottomSheet() {
               styles.textInputField,
               { backgroundColor: theme.surface, color: theme.primaryText },
             ]}
-            placeholderTextColor={theme.primaryText}
+            placeholderTextColor={theme.mutedText}
           />
 
+          {subtasks.length > 0 && (
+            <BottomSheetScrollView
+              style={{
+                maxHeight: subtasksHeight,
+                width: "100%",
+              }}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
+              {subtasks.map((subtask) => (
+                <SubtasksInput
+                  key={subtask.id}
+                  ref={(el) => {
+                    subtaskInputRefs.current[subtask.id] = el;
+                  }}
+                  value={subtask.title}
+                  onChangeText={(text) => updateSubtaskTitle(subtask.id, text)}
+                  onRemove={() => removeSubtask(subtask.id)}
+                />
+              ))}
+            </BottomSheetScrollView>
+          )}
+
           <View
+            onLayout={handleButtonRowLayout}
             style={{
-              flexDirection: "row",
-              marginVertical: 22,
-              justifyContent: "flex-start",
+              marginVertical: BUTTON_ROW_MARGIN_VERTICAL,
+              justifyContent: "space-between",
               width: "100%",
-              gap: 14,
+              flexDirection: "row",
               alignItems: "center",
             }}
           >
-            <CategoriesPopupMenu
-              activeCategory={category}
-              setActiveCategory={setCategory}
-            />
-            <CalendarPickerTrigger onOpen={openCalendarPicker} />
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-start",
+                gap: 4,
+                alignItems: "center",
+              }}
+            >
+              <CategoriesPopupMenu
+                activeCategory={category}
+                setActiveCategory={setCategory}
+              />
+              <CalendarPickerTrigger onOpen={openCalendarPicker} />
+              <AddSubtaskBtn onPress={addSubtask} />
+            </View>
+            <TaskCreationSubmitBtn onPress={() => console.log("submit")} />
           </View>
         </BottomSheetView>
       </BottomSheetModal>
@@ -174,7 +316,6 @@ export default function TasksCreationBottomSheet() {
 const styles = StyleSheet.create({
   contentContainer: {
     alignItems: "center",
-    height: "100%",
     paddingHorizontal: 18,
     paddingTop: 8,
   },
