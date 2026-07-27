@@ -131,6 +131,7 @@ export default function TasksCreationBottomSheet() {
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("All");
+  const [dueDate, setDueDate] = useState("");
 
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const subtaskInputRefs = useRef<SubtaskInputRefMap>({});
@@ -165,6 +166,7 @@ export default function TasksCreationBottomSheet() {
   const resetForm = useCallback(() => {
     setTitle("");
     setCategory("All");
+    setDueDate("");
     setSubtasks([]);
     subtaskInputRefs.current = {};
     previousSubtaskCountRef.current = 0;
@@ -197,6 +199,17 @@ export default function TasksCreationBottomSheet() {
   );
 
   const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
+
+  const handleSubmit = () => {
+    const payload = {
+      title: title,
+      category: category,
+      dueDate: dueDate,
+      subtasks: subtasks,
+    };
+
+    console.log(payload);
+  };
 
   return (
     <>
@@ -293,10 +306,13 @@ export default function TasksCreationBottomSheet() {
                 activeCategory={category}
                 setActiveCategory={setCategory}
               />
-              <CalendarPickerTrigger onOpen={openCalendarPicker} />
+              <CalendarPickerTrigger
+                onOpen={openCalendarPicker}
+                day={dueDate}
+              />
               <AddSubtaskBtn onPress={addSubtask} />
             </View>
-            <TaskCreationSubmitBtn onPress={() => console.log("submit")} />
+            <TaskCreationSubmitBtn onPress={() => handleSubmit()} />
           </View>
         </BottomSheetView>
       </BottomSheetModal>
@@ -305,6 +321,8 @@ export default function TasksCreationBottomSheet() {
         isModalVisible={calendarModalVisible}
         onClose={closeCalendarPicker}
         onModalHide={handleCalendarModalHide}
+        dueDate={dueDate}
+        setDueDate={setDueDate}
       />
     </>
   );

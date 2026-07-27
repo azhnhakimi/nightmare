@@ -22,6 +22,8 @@ type Props = {
   isModalVisible: boolean;
   onClose: () => void;
   onModalHide: () => void;
+  dueDate: string;
+  setDueDate: (date: string) => void;
 };
 
 const ANIMATION_DURATION = 250;
@@ -30,6 +32,8 @@ export default function CalendarPickerModal({
   isModalVisible,
   onClose,
   onModalHide,
+  dueDate,
+  setDueDate,
 }: Props) {
   const { theme } = useTheme();
   const [isMounted, setIsMounted] = useState(false);
@@ -87,15 +91,13 @@ export default function CalendarPickerModal({
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowDateString = formatDateString(tomorrow);
 
-  const [selectedDate, setSelectedDate] = useState("");
-
   const markedDates = {
     [todayDateString]: {
       marked: true,
       dotColor: theme.primaryText,
     },
-    ...(selectedDate && {
-      [selectedDate]: {
+    ...(dueDate && {
+      [dueDate]: {
         selected: true,
         disableTouchEvent: true,
         selectedColor: theme.accent,
@@ -158,8 +160,7 @@ export default function CalendarPickerModal({
                 }}
                 showSixWeeks={true}
                 onDayPress={(day) => {
-                  console.log("selected day", day);
-                  setSelectedDate(day.dateString);
+                  setDueDate(day.dateString);
                 }}
                 markedDates={markedDates}
               />
@@ -172,12 +173,12 @@ export default function CalendarPickerModal({
                 }}
               >
                 <TouchableOpacity
-                  onPress={() => setSelectedDate(todayDateString)}
+                  onPress={() => setDueDate(todayDateString)}
                   style={[
                     styles.templateBtn,
                     {
                       backgroundColor:
-                        selectedDate === todayDateString
+                        dueDate === todayDateString
                           ? theme.accent
                           : theme.accent + "44",
                     },
@@ -186,12 +187,12 @@ export default function CalendarPickerModal({
                   <Text style={{ color: theme.onAccent }}>Today</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setSelectedDate(tomorrowDateString)}
+                  onPress={() => setDueDate(tomorrowDateString)}
                   style={[
                     styles.templateBtn,
                     {
                       backgroundColor:
-                        selectedDate === tomorrowDateString
+                        dueDate === tomorrowDateString
                           ? theme.accent
                           : theme.accent + "44",
                     },
@@ -200,14 +201,12 @@ export default function CalendarPickerModal({
                   <Text style={{ color: theme.onAccent }}>Tomorrow</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setSelectedDate("")}
+                  onPress={() => setDueDate("")}
                   style={[
                     styles.templateBtn,
                     {
                       backgroundColor:
-                        selectedDate === ""
-                          ? theme.accent
-                          : theme.accent + "44",
+                        dueDate === "" ? theme.accent : theme.accent + "44",
                     },
                   ]}
                 >
