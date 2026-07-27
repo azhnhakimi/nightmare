@@ -15,7 +15,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from "react-native";
+import {
+  Keyboard,
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -73,7 +79,7 @@ export default function TasksCreationBottomSheet() {
       if (index === 0) {
         setTimeout(() => {
           titleInputRef.current?.focus();
-        }, SHEET_ANIMATION_DURATION);
+        });
       }
     },
     [backdropOpacity],
@@ -106,12 +112,11 @@ export default function TasksCreationBottomSheet() {
     [handleBackdropPress, backdropOpacity],
   );
 
-  const wantsCalendarOpenRef = useRef(false);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
   const openCalendarPicker = useCallback(() => {
-    wantsCalendarOpenRef.current = true;
-    bottomSheetModalRef.current?.dismiss();
+    Keyboard.dismiss();
+    setCalendarModalVisible(true);
   }, []);
 
   const closeCalendarPicker = useCallback(() => {
@@ -119,8 +124,9 @@ export default function TasksCreationBottomSheet() {
   }, []);
 
   const handleCalendarModalHide = useCallback(() => {
-    wantsCalendarOpenRef.current = false;
-    bottomSheetModalRef.current?.present();
+    setTimeout(() => {
+      titleInputRef.current?.focus();
+    }, 300);
   }, []);
 
   const [title, setTitle] = useState("");
@@ -163,14 +169,6 @@ export default function TasksCreationBottomSheet() {
     subtaskInputRefs.current = {};
     previousSubtaskCountRef.current = 0;
   }, []);
-
-  const handleSheetDismiss = useCallback(() => {
-    if (wantsCalendarOpenRef.current) {
-      setCalendarModalVisible(true);
-    } else {
-      resetForm();
-    }
-  }, [resetForm]);
 
   const [buttonRowHeight, setButtonRowHeight] = useState(
     BUTTON_ROW_HEIGHT_FALLBACK,
@@ -219,6 +217,7 @@ export default function TasksCreationBottomSheet() {
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}
         snapPoints={snapPoints}
+        enableContentPanningGesture={false}
         enableDynamicSizing={false}
         backdropComponent={renderBackdrop}
         handleIndicatorStyle={{ backgroundColor: theme.primaryText }}
@@ -227,10 +226,9 @@ export default function TasksCreationBottomSheet() {
           elevation: 0,
           shadowOpacity: 0,
         }}
-        onDismiss={handleSheetDismiss}
+        onDismiss={resetForm}
         keyboardBlurBehavior="restore"
         keyboardBehavior="interactive"
-        animationConfigs={{ duration: SHEET_ANIMATION_DURATION }}
         android_keyboardInputMode="adjustResize"
       >
         <BottomSheetView
@@ -258,7 +256,6 @@ export default function TasksCreationBottomSheet() {
                 width: "100%",
               }}
               showsVerticalScrollIndicator={false}
-              nestedScrollEnabled={true}
             >
               {subtasks.map((subtask) => (
                 <SubtasksInput

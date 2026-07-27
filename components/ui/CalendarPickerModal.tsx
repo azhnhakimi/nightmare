@@ -6,8 +6,10 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { Calendar } from "react-native-calendars";
 import Animated, {
   Easing,
   runOnJS,
@@ -68,8 +70,40 @@ export default function CalendarPickerModal({
 
   const dialogAnimatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ scale: 0.92 + progress.value * 0.08 }],
+    transform: [{ translateY: (1 - progress.value) * screenHeight }],
   }));
+
+  const formatDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const today = new Date();
+  const todayDateString = formatDateString(today);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowDateString = formatDateString(tomorrow);
+
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const markedDates = {
+    [todayDateString]: {
+      marked: true,
+      dotColor: theme.primaryText,
+    },
+    ...(selectedDate && {
+      [selectedDate]: {
+        selected: true,
+        disableTouchEvent: true,
+        selectedColor: theme.accent,
+        selectedTextColor: theme.onAccent,
+        marked: false,
+      },
+    }),
+  };
 
   if (!isMounted) {
     return null;
@@ -102,7 +136,85 @@ export default function CalendarPickerModal({
               dialogAnimatedStyle,
             ]}
           >
-            <View style={{ backgroundColor: "lightpink", flex: 1 }} />
+            <View style={{}}>
+              <Calendar
+                current={todayDateString}
+                style={{
+                  backgroundColor: theme.surface,
+                  padding: 10,
+                }}
+                markingType="dot"
+                theme={{
+                  arrowColor: theme.accent,
+                  calendarBackground: theme.surface,
+                  backgroundColor: theme.surface,
+                  monthTextColor: theme.primaryText,
+                  dayTextColor: theme.primaryText,
+                  textDisabledColor: theme.mutedText,
+                  todayTextColor: theme.primaryText,
+                  selectedDayBackgroundColor: theme.accent,
+                  selectedDayTextColor: theme.onAccent,
+                  todayDotColor: theme.primaryText,
+                }}
+                showSixWeeks={true}
+                onDayPress={(day) => {
+                  console.log("selected day", day);
+                  setSelectedDate(day.dateString);
+                }}
+                markedDates={markedDates}
+              />
+
+              <View
+                style={{
+                  height: 35,
+                  flexDirection: "row",
+                  gap: 8,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => setSelectedDate(todayDateString)}
+                  style={[
+                    styles.templateBtn,
+                    {
+                      backgroundColor:
+                        selectedDate === todayDateString
+                          ? theme.accent
+                          : theme.accent + "44",
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.onAccent }}>Today</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSelectedDate(tomorrowDateString)}
+                  style={[
+                    styles.templateBtn,
+                    {
+                      backgroundColor:
+                        selectedDate === tomorrowDateString
+                          ? theme.accent
+                          : theme.accent + "44",
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.onAccent }}>Tomorrow</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setSelectedDate("")}
+                  style={[
+                    styles.templateBtn,
+                    {
+                      backgroundColor:
+                        selectedDate === ""
+                          ? theme.accent
+                          : theme.accent + "44",
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.onAccent }}>No Date</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <View
               style={{
@@ -110,23 +222,18 @@ export default function CalendarPickerModal({
                 justifyContent: "flex-end",
                 gap: 14,
                 alignItems: "center",
+                marginTop: 24,
               }}
             >
               <Pressable onPress={onClose}>
-                <Text style={{ color: theme.primaryText, fontWeight: 500 }}>
+                <Text
+                  style={{ color: theme.primaryText + "88", fontWeight: "500" }}
+                >
                   CANCEL
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={onClose}
-                style={{
-                  backgroundColor: theme.accent,
-                  paddingHorizontal: 16,
-                  paddingVertical: 4,
-                  borderRadius: 4,
-                }}
-              >
-                <Text style={{ color: theme.onAccent, fontWeight: "bold" }}>
+              <Pressable onPress={onClose}>
+                <Text style={{ color: theme.primaryText, fontWeight: "600" }}>
                   DONE
                 </Text>
               </Pressable>
@@ -148,9 +255,15 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: screenWidth * 0.85,
-    maxHeight: screenHeight * 0.6,
+    maxHeight: screenHeight,
     borderRadius: 16,
     padding: 20,
     gap: 14,
+  },
+  templateBtn: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 4,
   },
 });

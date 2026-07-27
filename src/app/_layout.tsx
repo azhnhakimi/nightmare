@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { MenuProvider } from "react-native-popup-menu";
 import "../../global.css";
 
@@ -36,16 +37,18 @@ function AppContent() {
 
   return (
     <>
-      <GestureHandlerRootView
-        style={{ flex: 1, backgroundColor: theme.background }}
-      >
-        <MenuProvider>
-          <BottomSheetModalProvider>
-            <Slot />
-            <StatusBar style={statusBarStyle} />
-          </BottomSheetModalProvider>
-        </MenuProvider>
-      </GestureHandlerRootView>
+      <KeyboardProvider>
+        <GestureHandlerRootView
+          style={{ flex: 1, backgroundColor: theme.background }}
+        >
+          <MenuProvider>
+            <BottomSheetModalProvider>
+              <Slot />
+              <StatusBar style={statusBarStyle} />
+            </BottomSheetModalProvider>
+          </MenuProvider>
+        </GestureHandlerRootView>
+      </KeyboardProvider>
     </>
   );
 }
