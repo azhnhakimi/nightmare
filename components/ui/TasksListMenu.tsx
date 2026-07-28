@@ -1,5 +1,6 @@
 import { useTheme } from "@/theme/useTheme";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import { useMemo } from "react";
 import { Text, TouchableHighlight } from "react-native";
 import {
@@ -50,7 +51,7 @@ export default function TasksListMenu() {
           <Text style={{ color: theme.primaryText }}>Select Tasks</Text>
         </MenuOption>
         <MenuOption
-          onSelect={() => alert(`Manage Categories`)}
+          onSelect={() => router.push("/(screens)/manage-categories")}
           style={menuOptionStyles}
           customStyles={menuOptionCustomStyles}
         >

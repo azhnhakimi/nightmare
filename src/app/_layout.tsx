@@ -3,7 +3,7 @@ import { useTheme } from "@/theme/useTheme";
 import { getStatusBarStyle } from "@/utils/statusbar";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as NavigationBar from "expo-navigation-bar";
-import { Slot } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
@@ -36,19 +36,23 @@ function AppContent() {
   }, [theme.background]);
 
   return (
-    <>
-      <KeyboardProvider>
-        <GestureHandlerRootView
-          style={{ flex: 1, backgroundColor: theme.background }}
-        >
-          <MenuProvider>
-            <BottomSheetModalProvider>
-              <Slot />
-              <StatusBar style={statusBarStyle} />
-            </BottomSheetModalProvider>
-          </MenuProvider>
-        </GestureHandlerRootView>
-      </KeyboardProvider>
-    </>
+    <KeyboardProvider>
+      <GestureHandlerRootView
+        style={{ flex: 1, backgroundColor: theme.background }}
+      >
+        <MenuProvider>
+          <BottomSheetModalProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(drawer)" />
+              <Stack.Screen
+                name="(screens)"
+                options={{ animation: "slide_from_bottom" }}
+              />
+            </Stack>
+            <StatusBar style={statusBarStyle} />
+          </BottomSheetModalProvider>
+        </MenuProvider>
+      </GestureHandlerRootView>
+    </KeyboardProvider>
   );
 }
