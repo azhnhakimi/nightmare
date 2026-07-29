@@ -1,3 +1,4 @@
+import { createTask } from "@/lib/tasks";
 import { useTheme } from "@/theme/useTheme";
 import Entypo from "@expo/vector-icons/Entypo";
 import {
@@ -200,16 +201,22 @@ export default function TasksCreationBottomSheet() {
 
   const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
 
-  const handleSubmit = () => {
-    const payload = {
-      title: title,
-      category: category,
-      dueDate: dueDate,
-      subtasks: subtasks,
-    };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    console.log(payload);
-  };
+  const handleSubmit = useCallback(async () => {
+    if (!title.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      await createTask({ title, category, dueDate, subtasks });
+      bottomSheetModalRef.current?.dismiss();
+    } catch (err) {
+      console.error("Failed to create task:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [title, category, dueDate, subtasks, isSubmitting]);
 
   return (
     <>
@@ -312,7 +319,10 @@ export default function TasksCreationBottomSheet() {
               />
               <AddSubtaskBtn onPress={addSubtask} />
             </View>
-            <TaskCreationSubmitBtn onPress={() => handleSubmit()} />
+            <TaskCreationSubmitBtn
+              onPress={() => handleSubmit()}
+              isSubmitting={isSubmitting}
+            />
           </View>
         </BottomSheetView>
       </BottomSheetModal>

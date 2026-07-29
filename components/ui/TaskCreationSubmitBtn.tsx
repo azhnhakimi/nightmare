@@ -4,9 +4,13 @@ import { TouchableOpacity } from "react-native";
 
 type Props = {
   onPress: () => void;
+  isSubmitting: boolean;
 };
 
-export default function TaskCreationSubmitBtn({ onPress }: Props) {
+export default function TaskCreationSubmitBtn({
+  onPress,
+  isSubmitting,
+}: Props) {
   const { theme } = useTheme();
 
   return (
@@ -19,6 +23,7 @@ export default function TaskCreationSubmitBtn({ onPress }: Props) {
         alignItems: "center",
       }}
       onPress={onPress}
+      disabled={isSubmitting}
     >
       <FontAwesome name="send" size={18} color={theme.onAccent} />
     </TouchableOpacity>

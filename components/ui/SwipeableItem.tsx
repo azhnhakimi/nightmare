@@ -12,7 +12,7 @@ const ICON_SIZE = 18;
 const BUTTON_WIDTH = 70;
 const NUM_BUTTONS = 3;
 
-type Props<T extends { completed: boolean }> = {
+type Props<T extends { is_complete: boolean }> = {
   item: T;
   children: ReactNode;
   onChange?: (openDirection: OpenDirection) => void;
@@ -20,7 +20,7 @@ type Props<T extends { completed: boolean }> = {
   onComplete?: () => void;
 };
 
-export default function SwipeableItem<T extends { completed: boolean }>({
+export default function SwipeableItem<T extends { is_complete: boolean }>({
   item,
   children,
   onChange,
@@ -85,13 +85,13 @@ export default function SwipeableItem<T extends { completed: boolean }>({
             styles.underlay,
             styles.right,
             {
-              backgroundColor: item.completed ? "#969696" : "#4CAF50",
+              backgroundColor: item.is_complete ? "#969696" : "#4CAF50",
               borderTopLeftRadius: 8,
               borderBottomLeftRadius: 8,
             },
           ]}
         >
-          {item.completed ? (
+          {item.is_complete ? (
             <AntDesign name="close-circle" size={ICON_SIZE + 6} color="white" />
           ) : (
             <AntDesign name="check-circle" size={ICON_SIZE + 6} color="white" />

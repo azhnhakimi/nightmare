@@ -1,9 +1,18 @@
 import SwipeableItem from "@/components/ui/SwipeableItem";
 import { BOTTOM_SHEET_BUTTON_RESERVED_SPACE } from "@/components/ui/TasksCreationBottomSheet";
+import { useTasks } from "@/hooks/useTasks";
+import { deleteTask, Task, updateTaskCompletion } from "@/lib/tasks";
 import { useTheme } from "@/theme/useTheme";
 import Feather from "@expo/vector-icons/Feather";
-import React, { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { router } from "expo-router";
+import React, { useCallback } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import type { RenderItemParams } from "react-native-draggable-flatlist";
 import DraggableFlatList from "react-native-draggable-flatlist";
 import Animated, {
@@ -13,23 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSwipeableItemParams } from "react-native-swipeable-item";
 
-const NUM_ITEMS = 20;
-
-type Item = {
-  id: number;
-  key: string;
-  label: string;
-  completed: boolean;
-};
-
-const keyExtractor = (item: Item, index: number) => `${item.id}_${index}`;
-
-const initialData: Item[] = [...Array(NUM_ITEMS)].map((_, index) => ({
-  id: index,
-  key: `item-${index}`,
-  label: `item-${index}`,
-  completed: false,
-}));
+const keyExtractor = (item: Task) => item.id;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -37,13 +30,15 @@ function RowContent({
   item,
   drag,
   isActive,
+  onPress,
 }: {
-  item: Item;
+  item: Task;
   drag: () => void;
   isActive: boolean;
+  onPress: () => void;
 }) {
   const { theme } = useTheme();
-  const { percentOpenLeft, percentOpenRight } = useSwipeableItemParams<Item>();
+  const { percentOpenLeft, percentOpenRight } = useSwipeableItemParams<Task>();
 
   const animatedStyle = useAnimatedStyle(() => {
     const isOpening = percentOpenLeft.value > 0 || percentOpenRight.value > 0;
@@ -54,6 +49,7 @@ function RowContent({
 
   return (
     <AnimatedPressable
+      onPress={onPress}
       onLongPress={drag}
       disabled={isActive}
       style={[
@@ -65,7 +61,7 @@ function RowContent({
         },
       ]}
     >
-      {item.completed ? (
+      {item.is_complete ? (
         <Feather name="check-circle" size={16} color="#4BB543" />
       ) : (
         <Feather name="circle" size={16} color={theme.accent} />
@@ -74,10 +70,10 @@ function RowContent({
         style={[
           styles.text,
           { color: theme.primaryText },
-          item.completed && styles.completedText,
+          item.is_complete && styles.completedText,
         ]}
       >
-        {item.label}
+        {item.title}
       </Text>
     </AnimatedPressable>
   );
@@ -85,31 +81,84 @@ function RowContent({
 
 export default function DraggableFlatlist() {
   const insets = useSafeAreaInsets();
-  const [data, setData] = useState(initialData);
+  const { tasks, setTasks, isLoading, error, refetch } = useTasks();
 
-  const toggleComplete = useCallback((id: number) => {
-    setData((prev) =>
-      prev.map((row) =>
-        row.id === id ? { ...row, completed: !row.completed } : row,
-      ),
-    );
-    // TODO: hook up DB call here, e.g. updateTaskCompletion(id)
+  const toggleComplete = useCallback(
+    async (id: string) => {
+      const prevTasks = tasks;
+      const target = tasks.find((t) => t.id === id);
+      if (!target) return;
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, is_complete: !t.is_complete } : t,
+        ),
+      );
+
+      try {
+        await updateTaskCompletion(id, !target.is_complete);
+      } catch (err) {
+        console.error("Failed to update task:", err);
+        setTasks(prevTasks);
+      }
+    },
+    [tasks, setTasks],
+  );
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const prevTasks = tasks;
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+
+      try {
+        await deleteTask(id);
+      } catch (err) {
+        console.error("Failed to delete task:", err);
+        setTasks(prevTasks);
+      }
+    },
+    [tasks, setTasks],
+  );
+
+  const handlePress = useCallback((id: string) => {
+    router.push({ pathname: "/task-details", params: { id } });
   }, []);
 
-  const renderItem = ({ item, drag, isActive }: RenderItemParams<Item>) => (
+  const renderItem = ({ item, drag, isActive }: RenderItemParams<Task>) => (
     <SwipeableItem
       item={item}
-      onDelete={() => console.log("delete")}
+      onDelete={() => handleDelete(item.id)}
       onComplete={() => toggleComplete(item.id)}
     >
-      <RowContent item={item} drag={drag} isActive={isActive} />
+      <RowContent
+        item={item}
+        drag={drag}
+        isActive={isActive}
+        onPress={() => handlePress(item.id)}
+      />
     </SwipeableItem>
   );
 
+  if (isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <DraggableFlatList
-      data={data}
-      onDragEnd={({ data }) => setData(data)}
+      data={tasks}
+      onDragEnd={({ data }) => setTasks(data)}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
       containerStyle={{
@@ -143,5 +192,10 @@ const styles = StyleSheet.create({
   completedText: {
     textDecorationLine: "line-through",
     opacity: 0.5,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
