@@ -20,6 +20,12 @@ const DRAWER_ITEMS: DrawerItem[] = [
     icon: "list-outline",
     iconActive: "list",
   },
+  {
+    url: "calendar/index",
+    label: "Calendar",
+    icon: "calendar-clear-outline",
+    iconActive: "calendar-clear",
+  },
 ];
 
 const CONTROL_DRAWER_ITEMS: DrawerItem[] = [
