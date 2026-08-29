@@ -15,16 +15,16 @@ type DrawerItem = {
 
 const DRAWER_ITEMS: DrawerItem[] = [
   {
-    url: "tasks/index",
-    label: "Tasks",
-    icon: "list-outline",
-    iconActive: "list",
-  },
-  {
     url: "calendar/index",
     label: "Calendar",
     icon: "calendar-clear-outline",
     iconActive: "calendar-clear",
+  },
+  {
+    url: "tasks/index",
+    label: "Tasks",
+    icon: "list-outline",
+    iconActive: "list",
   },
 ];
 

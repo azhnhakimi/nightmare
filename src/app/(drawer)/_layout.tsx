@@ -11,6 +11,7 @@ export default function DrawerLayout() {
       }}
       drawerContent={(props) => <SideDrawer {...props} />}
     >
+      <Drawer.Screen name="calendar/index" />
       <Drawer.Screen name="tasks/index" />
       <Drawer.Screen name="theme/index" />
     </Drawer>
