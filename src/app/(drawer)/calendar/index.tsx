@@ -1,6 +1,6 @@
 import { CalendarItem, fetchCalendarItems } from "@/lib/calendarItems";
 import { useTheme } from "@/theme/useTheme";
-import { Link, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
@@ -68,20 +68,6 @@ export default function CalendarIndex() {
       style={styles.container}
       edges={["bottom", "top"]}
     >
-      <Link
-        href={"/(drawer)/calendar/import"}
-        style={{
-          alignSelf: "flex-end",
-          backgroundColor: theme.accent,
-          color: theme.onAccent,
-          paddingHorizontal: 16,
-          paddingVertical: 4,
-          borderRadius: 4,
-        }}
-      >
-        Import
-      </Link>
-
       <View style={{ flex: 1 }}>
         <Calendar
           key={theme.background + theme.primaryText}
@@ -173,9 +159,7 @@ const createStyles = (theme: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      padding: 4,
       backgroundColor: theme.background,
-      paddingBottom: 16,
     },
     itemRow: {
       paddingVertical: 8,

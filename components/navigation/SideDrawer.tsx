@@ -20,6 +20,12 @@ const DRAWER_ITEMS: DrawerItem[] = [
     icon: "calendar-clear-outline",
     iconActive: "calendar-clear",
   },
+    {
+    url: "events/index",
+    label: "Events",
+    icon: "library-outline",
+    iconActive: "library",
+  },
   {
     url: "tasks/index",
     label: "Tasks",
