@@ -36,6 +36,17 @@ export default function CalendarIndex() {
       if (!map[key]) map[key] = [];
       map[key].push(item);
     }
+
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => {
+        if (a.type !== b.type) return a.type === "task" ? -1 : 1;
+        if (a.type === "event" && b.type === "event") {
+          return a.startAt.localeCompare(b.startAt);
+        }
+        return 0;
+      });
+    }
+
     return map;
   }, [items]);
 
