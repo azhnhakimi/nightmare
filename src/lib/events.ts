@@ -20,3 +20,26 @@ export async function importIcsEvents(events: ParsedIcsEvent[]) {
     throw error;
   }
 }
+
+export async function createEvent(event: {
+  uid: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  startAt: string;
+  endAt: string;
+}) {
+  const { error } = await supabase.from("events").insert({
+    uid: event.uid,
+    title: event.title,
+    description: event.description,
+    location: event.location,
+    start_at: event.startAt,
+    end_at: event.endAt,
+    source: "manual",
+  });
+
+  if (error) {
+    throw error;
+  }
+}

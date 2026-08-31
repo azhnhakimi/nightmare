@@ -248,7 +248,7 @@ export default function TasksCreationBottomSheet() {
         }}
         onDismiss={resetForm}
         keyboardBlurBehavior="restore"
-        keyboardBehavior="interactive"
+        keyboardBehavior="extend"
         android_keyboardInputMode="adjustResize"
       >
         <BottomSheetView
