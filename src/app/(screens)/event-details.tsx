@@ -55,6 +55,12 @@ export default function EventDetails() {
     minute: "2-digit",
   })}`;
 
+  const handleEditPress = () => {};
+
+  const handleDeletePress = () => {
+    console.log("delete");
+  };
+
   return (
     <ScrollView
       style={{ backgroundColor: theme.background }}
@@ -99,13 +105,16 @@ export default function EventDetails() {
         </View>
       )}
 
-      <View style={{ marginTop: "auto", marginBottom: 12, gap: 6 }}>
-        <Pressable style={styles.ctaButtons}>
+      <View style={{ marginTop: "auto", gap: 6, marginBottom: 12 }}>
+        <Pressable style={styles.ctaButtons} onPress={handleEditPress}>
           <Feather name="edit-2" size={14} color={theme.onAccent} />
           <Text style={{ color: theme.onAccent }}>Edit</Text>
         </Pressable>
 
-        <Pressable style={[styles.ctaButtons, { backgroundColor: "#B00020" }]}>
+        <Pressable
+          style={[styles.ctaButtons, { backgroundColor: "#B00020" }]}
+          onPress={handleDeletePress}
+        >
           <Feather name="trash" size={14} color={"white"} />
           <Text style={{ color: "white" }}>Delete</Text>
         </Pressable>
