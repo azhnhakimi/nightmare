@@ -20,6 +20,15 @@ export default function TaskDetails() {
   const insets = useSafeAreaInsets();
   const { task, subtasks, setSubtasks, isLoading, error } = useTaskDetails(id);
 
+  const formatDate = (due: string | null) =>
+    due
+      ? new Date(due).toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+        })
+      : "No due date";
+
   const toggleSubtask = useCallback(
     async (subtaskId: string) => {
       const prev = subtasks;
@@ -80,12 +89,13 @@ export default function TaskDetails() {
         <View style={[styles.badge, { backgroundColor: theme.surface }]}>
           <Text style={{ color: theme.mutedText }}>{task.category}</Text>
         </View>
-        {task.due_date && (
-          <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-            <Feather name="calendar" size={12} color={theme.mutedText} />
-            <Text style={{ color: theme.mutedText }}>{task.due_date}</Text>
-          </View>
-        )}
+
+        <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+          <Feather name="calendar" size={12} color={theme.mutedText} />
+          <Text style={{ color: theme.mutedText }}>
+            {formatDate(task.due_date)}
+          </Text>
+        </View>
       </View>
 
       {subtasks.length > 0 && (
