@@ -1,8 +1,8 @@
 import { CalendarItem, fetchCalendarItems } from "@/lib/calendarItems";
 import { useTheme } from "@/theme/useTheme";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,6 +16,7 @@ const formatDateString = (date: Date) => {
 export default function CalendarIndex() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
 
   const today = new Date();
   const todayDateString = formatDateString(today);
@@ -73,6 +74,17 @@ export default function CalendarIndex() {
     return marks;
   }, [itemsByDate, selectedDate, theme]);
 
+  const navigateToDetails = (type: string, id: string) => {
+    switch (type) {
+      case "task":
+        router.push({ pathname: "/(screens)/task-details", params: { id } });
+        break;
+      case "event":
+        router.push({ pathname: "/(screens)/event-details", params: { id } });
+        break;
+    }
+  };
+
   return (
     <SafeAreaView
       className="flex-1 p-2"
@@ -108,7 +120,11 @@ export default function CalendarIndex() {
 
       <View style={{ flex: 1, paddingHorizontal: 8, marginTop: 6 }}>
         {(itemsByDate[selectedDate] ?? []).map((item) => (
-          <View key={item.id} style={styles.itemRow}>
+          <Pressable
+            key={item.id}
+            style={styles.itemRow}
+            onPress={() => navigateToDetails(item.type, item.id)}
+          >
             <Text style={{ color: theme.primaryText, fontWeight: "500" }}>
               {item.title}
             </Text>
@@ -159,7 +175,7 @@ export default function CalendarIndex() {
                 </Text>
               </>
             )}
-          </View>
+          </Pressable>
         ))}
       </View>
     </SafeAreaView>

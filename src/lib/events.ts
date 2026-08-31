@@ -43,3 +43,17 @@ export async function createEvent(event: {
     throw error;
   }
 }
+
+export async function getEventById(id: string) {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, title, description, location, start_at, end_at")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}

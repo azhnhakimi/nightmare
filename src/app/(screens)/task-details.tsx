@@ -1,4 +1,3 @@
-// src/app/(screens)/task-details.tsx
 import { useTaskDetails } from "@/hooks/useTaskDetails";
 import { updateSubtaskCompletion } from "@/lib/tasks";
 import { useTheme } from "@/theme/useTheme";
