@@ -1,10 +1,15 @@
+import EventCreationBottomSheet, {
+  EventSheetHandle,
+} from "@/components/ui/EventCreationBottomSheet";
 import { useEventDetails } from "@/hooks/useEventDetails";
+import { deleteEvent } from "@/lib/events";
 import { useTheme } from "@/theme/useTheme";
 import Feather from "@expo/vector-icons/Feather";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +24,13 @@ export default function EventDetails() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const { event, isLoading, error } = useEventDetails(id);
+
+  const eventSheetRef = useRef<EventSheetHandle>(null);
+
+  const handleEditPress = () => {
+    if (!event) return;
+    eventSheetRef.current?.present(event);
+  };
 
   if (isLoading) {
     return (
@@ -38,6 +50,24 @@ export default function EventDetails() {
     );
   }
 
+  const handleDeletePress = () => {
+    Alert.alert("Delete event?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteEvent(event.id);
+            router.back();
+          } catch (err) {
+            Alert.alert("Couldn't delete the event. Try again.");
+          }
+        },
+      },
+    ]);
+  };
+
   const startDate = new Date(event.start_at);
   const endDate = new Date(event.end_at);
 
@@ -55,71 +85,72 @@ export default function EventDetails() {
     minute: "2-digit",
   })}`;
 
-  const handleEditPress = () => {};
-
-  const handleDeletePress = () => {
-    console.log("delete");
-  };
-
   return (
-    <ScrollView
-      style={{ backgroundColor: theme.background }}
-      contentContainerStyle={[
-        styles.container,
-        { paddingTop: insets.top + 16 },
-      ]}
-    >
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Feather name="arrow-left" size={22} color={theme.primaryText} />
-      </Pressable>
+    <>
+      <ScrollView
+        style={{ backgroundColor: theme.background }}
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + 16 },
+        ]}
+      >
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Feather name="arrow-left" size={22} color={theme.primaryText} />
+        </Pressable>
 
-      <Text style={[styles.title, { color: theme.primaryText }]}>
-        {event.title}
-      </Text>
+        <Text style={[styles.title, { color: theme.primaryText }]}>
+          {event.title}
+        </Text>
 
-      <View style={styles.metaRow}>
-        <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-          <Feather name="calendar" size={12} color={theme.mutedText} />
-          <Text style={{ color: theme.mutedText }}>{dateLabel}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-          <Feather name="clock" size={12} color={theme.mutedText} />
-          <Text style={{ color: theme.mutedText }}>{timeLabel}</Text>
-        </View>
-        {event.location && (
+        <View style={styles.metaRow}>
           <View style={[styles.badge, { backgroundColor: theme.surface }]}>
-            <Feather name="map-pin" size={12} color={theme.mutedText} />
-            <Text style={{ color: theme.mutedText }}>{event.location}</Text>
+            <Feather name="calendar" size={12} color={theme.mutedText} />
+            <Text style={{ color: theme.mutedText }}>{dateLabel}</Text>
+          </View>
+          <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+            <Feather name="clock" size={12} color={theme.mutedText} />
+            <Text style={{ color: theme.mutedText }}>{timeLabel}</Text>
+          </View>
+          {event.location && (
+            <View style={[styles.badge, { backgroundColor: theme.surface }]}>
+              <Feather name="map-pin" size={12} color={theme.mutedText} />
+              <Text style={{ color: theme.mutedText }}>{event.location}</Text>
+            </View>
+          )}
+        </View>
+
+        {event.description && (
+          <View style={styles.descriptionSection}>
+            <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>
+              Description
+            </Text>
+            <Text style={{ color: theme.primaryText, fontSize: 15 }}>
+              {event.description.trim()}
+            </Text>
           </View>
         )}
-      </View>
 
-      {event.description && (
-        <View style={styles.descriptionSection}>
-          <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>
-            Description
-          </Text>
-          <Text style={{ color: theme.primaryText, fontSize: 15 }}>
-            {event.description.trim()}
-          </Text>
+        <View style={{ marginTop: "auto", gap: 6, marginBottom: 12 }}>
+          <Pressable style={styles.ctaButtons} onPress={handleEditPress}>
+            <Feather name="edit-2" size={14} color={theme.onAccent} />
+            <Text style={{ color: theme.onAccent }}>Edit</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.ctaButtons, { backgroundColor: "#B00020" }]}
+            onPress={handleDeletePress}
+          >
+            <Feather name="trash" size={14} color={"white"} />
+            <Text style={{ color: "white" }}>Delete</Text>
+          </Pressable>
         </View>
-      )}
+      </ScrollView>
 
-      <View style={{ marginTop: "auto", gap: 6, marginBottom: 12 }}>
-        <Pressable style={styles.ctaButtons} onPress={handleEditPress}>
-          <Feather name="edit-2" size={14} color={theme.onAccent} />
-          <Text style={{ color: theme.onAccent }}>Edit</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.ctaButtons, { backgroundColor: "#B00020" }]}
-          onPress={handleDeletePress}
-        >
-          <Feather name="trash" size={14} color={"white"} />
-          <Text style={{ color: "white" }}>Delete</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+      <EventCreationBottomSheet
+        ref={eventSheetRef}
+        onSaved={() => router.back()}
+      />
+    </>
   );
 }
 

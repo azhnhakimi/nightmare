@@ -1,5 +1,5 @@
 import CalendarPickerModal from "@/components/ui/CalendarPickerModal";
-import { createEvent } from "@/lib/events";
+import { createEvent, updateEvent } from "@/lib/events";
 import { useTheme } from "@/theme/useTheme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
@@ -11,7 +11,15 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import * as Crypto from "expo-crypto";
-import { ComponentRef, useCallback, useMemo, useRef, useState } from "react";
+import {
+  ComponentRef,
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Keyboard,
   Pressable,
@@ -22,317 +30,363 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function EventCreationBottomSheet() {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
+export type EventPrefill = {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_at: string;
+  end_at: string;
+};
 
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const titleInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
-  const descriptionInputRef =
-    useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
-  const locationInputRef =
-    useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+export type EventSheetHandle = {
+  present: (prefill?: EventPrefill) => void;
+};
 
-  const handlePresentModalPress = useCallback(() => {
-    bottomSheetModalRef.current?.present();
-  }, []);
+type Props = {
+  onSaved?: () => void;
+};
 
-  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
+  ({ onSaved }, ref) => {
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+    const insets = useSafeAreaInsets();
 
-  const openCalendarPicker = useCallback(() => {
-    Keyboard.dismiss();
-    setCalendarModalVisible(true);
-  }, []);
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const titleInputRef =
+      useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+    const descriptionInputRef =
+      useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+    const locationInputRef =
+      useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
 
-  const closeCalendarPicker = useCallback(() => {
-    setCalendarModalVisible(false);
-  }, []);
+    // const handlePresentModalPress = useCallback(() => {
+    //   bottomSheetModalRef.current?.present();
+    // }, []);
 
-  const handleCalendarModalHide = useCallback(() => {
-    setTimeout(() => {
-      //   titleInputRef.current?.focus();
-    }, 300);
-  }, []);
+    const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+    const openCalendarPicker = useCallback(() => {
+      Keyboard.dismiss();
+      setCalendarModalVisible(true);
+    }, []);
 
-  const handleStartTimeChange = (
-    event: DateTimePickerEvent,
-    selected?: Date,
-  ) => {
-    setShowStartPicker(false);
-    if (event.type === "set" && selected) setStartTime(selected);
-  };
+    const closeCalendarPicker = useCallback(() => {
+      setCalendarModalVisible(false);
+    }, []);
 
-  const handleEndTimeChange = (event: DateTimePickerEvent, selected?: Date) => {
-    setShowEndPicker(false);
-    if (event.type === "set" && selected) setEndTime(selected);
-  };
+    const handleCalendarModalHide = useCallback(() => {
+      setTimeout(() => {
+        //   titleInputRef.current?.focus();
+      }, 300);
+    }, []);
 
-  const formatDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+    const [showStartPicker, setShowStartPicker] = useState(false);
+    const [showEndPicker, setShowEndPicker] = useState(false);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [date, setDate] = useState(formatDateString(new Date()));
-  const [startTime, setStartTime] = useState(new Date());
-  const [endTime, setEndTime] = useState(new Date());
+    const handleStartTimeChange = (
+      event: DateTimePickerEvent,
+      selected?: Date,
+    ) => {
+      setShowStartPicker(false);
+      if (event.type === "set" && selected) setStartTime(selected);
+    };
 
-  const combineDateAndTime = (dateStr: string, time: Date) => {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    return new Date(year, month - 1, day, time.getHours(), time.getMinutes());
-  };
+    const handleEndTimeChange = (
+      event: DateTimePickerEvent,
+      selected?: Date,
+    ) => {
+      setShowEndPicker(false);
+      if (event.type === "set" && selected) setEndTime(selected);
+    };
 
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const formatDateString = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
 
-  const resetForm = useCallback(() => {
-    setTitle("");
-    setDescription("");
-    setLocation("");
-    setDate(formatDateString(new Date()));
-    setStartTime(new Date());
-    setEndTime(new Date());
-  }, []);
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [location, setLocation] = useState("");
+    const [date, setDate] = useState(formatDateString(new Date()));
+    const [startTime, setStartTime] = useState(new Date());
+    const [endTime, setEndTime] = useState(new Date());
 
-  const handleSubmit = async () => {
-    if (!title.trim() || isSubmitting) return;
+    const combineDateAndTime = (dateStr: string, time: Date) => {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return new Date(year, month - 1, day, time.getHours(), time.getMinutes());
+    };
 
-    const startAt = combineDateAndTime(date, startTime);
-    const endAt = combineDateAndTime(date, endTime);
+    const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
-    if (endAt <= startAt) {
-      setError("End time must be after start time");
-      return;
-    }
+    useImperativeHandle(ref, () => ({
+      present: (prefill) => {
+        if (prefill) {
+          setEditingId(prefill.id);
+          setTitle(prefill.title);
+          setDescription(prefill.description ?? "");
+          setLocation(prefill.location ?? "");
+          const start = new Date(prefill.start_at);
+          const end = new Date(prefill.end_at);
+          setDate(formatDateString(start));
+          setStartTime(start);
+          setEndTime(end);
+        } else {
+          setEditingId(null);
+        }
+        bottomSheetModalRef.current?.present();
+      },
+    }));
 
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await createEvent({
-        uid: Crypto.randomUUID(),
-        title: title.trim(),
-        description: description.trim() || null,
-        location: location.trim() || null,
-        startAt: startAt.toISOString(),
-        endAt: endAt.toISOString(),
-      });
-
-      bottomSheetModalRef.current?.dismiss();
+    const resetForm = useCallback(() => {
       setTitle("");
       setDescription("");
       setLocation("");
       setDate(formatDateString(new Date()));
       setStartTime(new Date());
       setEndTime(new Date());
-    } catch (err) {
-      setError("Couldn't save the event. Try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      setEditingId(null);
+    }, []);
 
-  return (
-    <>
-      <Pressable style={styles.button} onPress={handlePresentModalPress}>
-        <Text style={{ color: theme.onAccent, fontWeight: "600" }}>
-          Create an event
-        </Text>
-      </Pressable>
+    const handleSubmit = async () => {
+      if (!title.trim() || isSubmitting) return;
 
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        snapPoints={["95%"]}
-        enableDynamicSizing={false}
-        backgroundStyle={{
-          backgroundColor: theme.surface,
-        }}
-        handleIndicatorStyle={{ backgroundColor: theme.primaryText }}
-        keyboardBlurBehavior="restore"
-        keyboardBehavior="extend"
-        onDismiss={resetForm}
-      >
-        <BottomSheetView style={styles.sheetContainer}>
-          {error && (
-            <Text style={{ color: "red", textAlign: "left", marginBottom: 8 }}>
-              {error}
-            </Text>
-          )}
+      const startAt = combineDateAndTime(date, startTime);
+      const endAt = combineDateAndTime(date, endTime);
 
-          <View style={{ marginBottom: 12 }}>
-            <Text style={styles.textInputHeader}>Title</Text>
-            <BottomSheetTextInput
-              ref={titleInputRef}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Enter your title..."
-              style={[
-                styles.textInputField,
-                { backgroundColor: theme.background, color: theme.primaryText },
-              ]}
-              placeholderTextColor={theme.mutedText}
-            />
-          </View>
+      if (endAt <= startAt) {
+        setError("End time must be after start time");
+        return;
+      }
 
-          <View style={{ marginBottom: 12 }}>
-            <Text style={styles.textInputHeader}>Description</Text>
-            <BottomSheetTextInput
-              ref={descriptionInputRef}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Enter your description..."
-              style={[
-                styles.textInputField,
-                {
-                  backgroundColor: theme.background,
-                  color: theme.primaryText,
-                  height: 90,
-                  textAlignVertical: "top",
-                },
-              ]}
-              placeholderTextColor={theme.mutedText}
-              multiline
-            />
-          </View>
+      setError(null);
+      setIsSubmitting(true);
 
-          <View style={{ marginBottom: 12 }}>
-            <Text style={styles.textInputHeader}>Location</Text>
-            <BottomSheetTextInput
-              ref={locationInputRef}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Enter the location..."
-              style={[
-                styles.textInputField,
-                { backgroundColor: theme.background, color: theme.primaryText },
-              ]}
-              placeholderTextColor={theme.mutedText}
-            />
-          </View>
+      const payload = {
+        title: title.trim(),
+        description: description.trim() || null,
+        location: location.trim() || null,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+      };
 
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 8,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Pressable
-              onPress={openCalendarPicker}
-              style={styles.timePickerBtn}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+      try {
+        if (editingId) {
+          await updateEvent(editingId, payload);
+        } else {
+          await createEvent({ uid: Crypto.randomUUID(), ...payload });
+        }
+
+        onSaved?.();
+        bottomSheetModalRef.current?.dismiss();
+      } catch (err) {
+        setError("Couldn't save the event. Try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <>
+        <BottomSheetModal
+          ref={bottomSheetModalRef}
+          snapPoints={["95%"]}
+          enableDynamicSizing={false}
+          backgroundStyle={{
+            backgroundColor: theme.surface,
+          }}
+          handleIndicatorStyle={{ backgroundColor: theme.primaryText }}
+          keyboardBlurBehavior="restore"
+          keyboardBehavior="extend"
+          onDismiss={resetForm}
+        >
+          <BottomSheetView style={styles.sheetContainer}>
+            {error && (
+              <Text
+                style={{ color: "red", textAlign: "left", marginBottom: 8 }}
               >
-                <Ionicons
-                  name="calendar-clear-outline"
-                  size={18}
-                  color={theme.primaryText}
-                />
-                <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
-                  Date
-                </Text>
-              </View>
-              <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
-                {date.split("-").reverse().join("/")}
+                {error}
               </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowStartPicker(true)}
-              style={styles.timePickerBtn}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-              >
-                <Ionicons
-                  name="time-outline"
-                  size={18}
-                  color={theme.primaryText}
-                />
-                <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
-                  Start time
-                </Text>
-              </View>
-              <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
-                {startTime.toLocaleTimeString(undefined, {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowEndPicker(true)}
-              style={styles.timePickerBtn}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-              >
-                <Ionicons
-                  name="time-outline"
-                  size={18}
-                  color={theme.primaryText}
-                />
-                <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
-                  End time
-                </Text>
-              </View>
-              <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
-                {endTime.toLocaleTimeString(undefined, {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </Pressable>
-
-            {showStartPicker && (
-              <DateTimePicker
-                value={startTime}
-                mode="time"
-                onChange={handleStartTimeChange}
-              />
             )}
-            {showEndPicker && (
-              <DateTimePicker
-                value={endTime}
-                mode="time"
-                onChange={handleEndTimeChange}
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.textInputHeader}>Title</Text>
+              <BottomSheetTextInput
+                ref={titleInputRef}
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Enter your title..."
+                style={[
+                  styles.textInputField,
+                  {
+                    backgroundColor: theme.background,
+                    color: theme.primaryText,
+                  },
+                ]}
+                placeholderTextColor={theme.mutedText}
               />
-            )}
-          </View>
+            </View>
 
-          <TouchableOpacity
-            style={[styles.submitBtn, { marginBottom: insets.bottom + 12 }]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <Text style={{ color: theme.onAccent }}>
-              {isSubmitting ? "Creating..." : "Create"}
-            </Text>
-          </TouchableOpacity>
-        </BottomSheetView>
-      </BottomSheetModal>
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.textInputHeader}>Description</Text>
+              <BottomSheetTextInput
+                ref={descriptionInputRef}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Enter your description..."
+                style={[
+                  styles.textInputField,
+                  {
+                    backgroundColor: theme.background,
+                    color: theme.primaryText,
+                    height: 90,
+                    textAlignVertical: "top",
+                  },
+                ]}
+                placeholderTextColor={theme.mutedText}
+                multiline
+              />
+            </View>
 
-      <CalendarPickerModal
-        isModalVisible={calendarModalVisible}
-        onClose={closeCalendarPicker}
-        onModalHide={handleCalendarModalHide}
-        dueDate={date}
-        setDueDate={setDate}
-      />
-    </>
-  );
-}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.textInputHeader}>Location</Text>
+              <BottomSheetTextInput
+                ref={locationInputRef}
+                value={location}
+                onChangeText={setLocation}
+                placeholder="Enter the location..."
+                style={[
+                  styles.textInputField,
+                  {
+                    backgroundColor: theme.background,
+                    color: theme.primaryText,
+                  },
+                ]}
+                placeholderTextColor={theme.mutedText}
+              />
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 8,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Pressable
+                onPress={openCalendarPicker}
+                style={styles.timePickerBtn}
+              >
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <Ionicons
+                    name="calendar-clear-outline"
+                    size={18}
+                    color={theme.primaryText}
+                  />
+                  <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
+                    Date
+                  </Text>
+                </View>
+                <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
+                  {date.split("-").reverse().join("/")}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShowStartPicker(true)}
+                style={styles.timePickerBtn}
+              >
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={theme.primaryText}
+                  />
+                  <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
+                    Start time
+                  </Text>
+                </View>
+                <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
+                  {startTime.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShowEndPicker(true)}
+                style={styles.timePickerBtn}
+              >
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={theme.primaryText}
+                  />
+                  <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
+                    End time
+                  </Text>
+                </View>
+                <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
+                  {endTime.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </Pressable>
+
+              {showStartPicker && (
+                <DateTimePicker
+                  value={startTime}
+                  mode="time"
+                  onChange={handleStartTimeChange}
+                />
+              )}
+              {showEndPicker && (
+                <DateTimePicker
+                  value={endTime}
+                  mode="time"
+                  onChange={handleEndTimeChange}
+                />
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.submitBtn, { marginBottom: insets.bottom + 12 }]}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+            >
+              <Text style={{ color: theme.onAccent }}>
+                {isSubmitting ? "Saving..." : editingId ? "Save" : "Create"}
+              </Text>
+            </TouchableOpacity>
+          </BottomSheetView>
+        </BottomSheetModal>
+
+        <CalendarPickerModal
+          isModalVisible={calendarModalVisible}
+          onClose={closeCalendarPicker}
+          onModalHide={handleCalendarModalHide}
+          dueDate={date}
+          setDueDate={setDate}
+        />
+      </>
+    );
+  },
+);
 
 const createStyles = (theme: any) =>
   StyleSheet.create({
@@ -382,3 +436,5 @@ const createStyles = (theme: any) =>
       marginTop: "auto",
     },
   });
+
+export default EventCreationBottomSheet;

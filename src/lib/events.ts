@@ -57,3 +57,37 @@ export async function getEventById(id: string) {
 
   return data;
 }
+
+export async function updateEvent(
+  id: string,
+  event: {
+    title: string;
+    description: string | null;
+    location: string | null;
+    startAt: string;
+    endAt: string;
+  },
+) {
+  const { error } = await supabase
+    .from("events")
+    .update({
+      title: event.title,
+      description: event.description,
+      location: event.location,
+      start_at: event.startAt,
+      end_at: event.endAt,
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteEvent(id: string) {
+  const { error } = await supabase.from("events").delete().eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}

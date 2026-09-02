@@ -1,15 +1,18 @@
-import EventCreationBottomSheet from "@/components/ui/EventCreationBottomSheet";
+import EventCreationBottomSheet, {
+  EventSheetHandle,
+} from "@/components/ui/EventCreationBottomSheet";
 import { useTheme } from "@/theme/useTheme";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function EventsIndex() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
   const route = useRouter();
+
+  const eventSheetRef = useRef<EventSheetHandle>(null);
 
   return (
     <SafeAreaView
@@ -26,7 +29,16 @@ export default function EventsIndex() {
         </Text>
       </Pressable>
 
-      <EventCreationBottomSheet />
+      <Pressable
+        style={styles.button}
+        onPress={() => eventSheetRef.current?.present()}
+      >
+        <Text style={{ color: theme.onAccent, fontWeight: "600" }}>
+          Create an event
+        </Text>
+      </Pressable>
+
+      <EventCreationBottomSheet ref={eventSheetRef} />
     </SafeAreaView>
   );
 }
