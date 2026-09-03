@@ -28,6 +28,7 @@ export async function createEvent(event: {
   location: string | null;
   startAt: string;
   endAt: string;
+  rrule: string | null;
 }) {
   const { error } = await supabase.from("events").insert({
     uid: event.uid,
@@ -36,6 +37,7 @@ export async function createEvent(event: {
     location: event.location,
     start_at: event.startAt,
     end_at: event.endAt,
+    rrule: event.rrule,
     source: "manual",
   });
 
@@ -66,6 +68,7 @@ export async function updateEvent(
     location: string | null;
     startAt: string;
     endAt: string;
+    rrule: string | null
   },
 ) {
   const { error } = await supabase
@@ -76,6 +79,7 @@ export async function updateEvent(
       location: event.location,
       start_at: event.startAt,
       end_at: event.endAt,
+      rrule: event.rrule,
     })
     .eq("id", id);
 

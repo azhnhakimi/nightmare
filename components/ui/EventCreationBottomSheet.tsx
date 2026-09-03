@@ -1,15 +1,17 @@
 import CalendarPickerModal from "@/components/ui/CalendarPickerModal";
 import { createEvent, updateEvent } from "@/lib/events";
+import { buildRRuleString } from "@/lib/recurrence";
 import { useTheme } from "@/theme/useTheme";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
 import {
   BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetTextInput,
-  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import Checkbox from "expo-checkbox";
 import * as Crypto from "expo-crypto";
 import {
   ComponentRef,
@@ -21,6 +23,7 @@ import {
   useState,
 } from "react";
 import {
+  Dimensions,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -29,6 +32,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import RecurrenceFrequencyPopupMenu from "./RecurrenceFrequencyPopupMenu";
+import RecurrenceIntervalPopupMenu from "./RecurrenceIntervalPopupMenu";
 
 export type EventPrefill = {
   id: string;
@@ -60,20 +65,32 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
       useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
     const locationInputRef =
       useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+    const nTimesAmountInputRef =
+      useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
 
     // const handlePresentModalPress = useCallback(() => {
     //   bottomSheetModalRef.current?.present();
     // }, []);
 
     const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+    const [endDateModalVisible, setEndDateModalVisible] = useState(false);
 
     const openCalendarPicker = useCallback(() => {
       Keyboard.dismiss();
       setCalendarModalVisible(true);
     }, []);
 
+    const openEndDatePicker = useCallback(() => {
+      Keyboard.dismiss();
+      setEndDateModalVisible(true);
+    }, []);
+
     const closeCalendarPicker = useCallback(() => {
       setCalendarModalVisible(false);
+    }, []);
+
+    const closeEndDatePicker = useCallback(() => {
+      setEndDateModalVisible(false);
     }, []);
 
     const handleCalendarModalHide = useCallback(() => {
@@ -115,6 +132,23 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
     const [startTime, setStartTime] = useState(new Date());
     const [endTime, setEndTime] = useState(new Date());
 
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [frequency, setFrequency] = useState("Daily");
+    const [interval, setInterval] = useState(1);
+    const [endRecurrenceOption, setEndRecurrenceOption] = useState("times");
+    const [nTimesAmount, setNTimesAmount] = useState("");
+    const [endDate, setEndDate] = useState(formatDateString(new Date()));
+
+    const frequencyUnit = {
+      Daily: "day",
+      Weekly: "week",
+      Monthly: "month",
+    }[frequency];
+
+    const recurrenceText = `*This event occurs every ${interval} ${frequencyUnit}${
+      interval !== 1 ? "s" : ""
+    }.`;
+
     const combineDateAndTime = (dateStr: string, time: Date) => {
       const [year, month, day] = dateStr.split("-").map(Number);
       return new Date(year, month - 1, day, time.getHours(), time.getMinutes());
@@ -151,6 +185,13 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
       setStartTime(new Date());
       setEndTime(new Date());
       setEditingId(null);
+      setIsRecurring(false);
+      setFrequency("Daily");
+      setInterval(1);
+      setEndRecurrenceOption("times");
+      setNTimesAmount("");
+      setEndDate(formatDateString(new Date()));
+      setError(null);
     }, []);
 
     const handleSubmit = async () => {
@@ -173,6 +214,15 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
         location: location.trim() || null,
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
+        rrule: buildRRuleString({
+          isRecurring,
+          frequency,
+          interval,
+          endRecurrenceOption,
+          nTimesAmount,
+          endDate,
+          startAt: startAt.toISOString(),
+        }),
       };
 
       try {
@@ -191,178 +241,409 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
       }
     };
 
+    const SCREEN_HEIGHT = Dimensions.get("window").height;
+    const snapPoints = useMemo(() => [SCREEN_HEIGHT * 0.95], [SCREEN_HEIGHT]);
+
     return (
       <>
         <BottomSheetModal
           ref={bottomSheetModalRef}
-          snapPoints={["95%"]}
+          snapPoints={snapPoints}
           enableDynamicSizing={false}
-          backgroundStyle={{
-            backgroundColor: theme.surface,
-          }}
+          backgroundStyle={{ backgroundColor: theme.surface }}
           handleIndicatorStyle={{ backgroundColor: theme.primaryText }}
           keyboardBlurBehavior="restore"
-          keyboardBehavior="extend"
+          keyboardBehavior="interactive"
           onDismiss={resetForm}
+          android_keyboardInputMode="adjustResize"
         >
-          <BottomSheetView style={styles.sheetContainer}>
-            {error && (
-              <Text
-                style={{ color: "red", textAlign: "left", marginBottom: 8 }}
-              >
-                {error}
-              </Text>
-            )}
-
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.textInputHeader}>Title</Text>
-              <BottomSheetTextInput
-                ref={titleInputRef}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Enter your title..."
-                style={[
-                  styles.textInputField,
-                  {
-                    backgroundColor: theme.background,
-                    color: theme.primaryText,
-                  },
-                ]}
-                placeholderTextColor={theme.mutedText}
-              />
-            </View>
-
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.textInputHeader}>Description</Text>
-              <BottomSheetTextInput
-                ref={descriptionInputRef}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Enter your description..."
-                style={[
-                  styles.textInputField,
-                  {
-                    backgroundColor: theme.background,
-                    color: theme.primaryText,
-                    height: 90,
-                    textAlignVertical: "top",
-                  },
-                ]}
-                placeholderTextColor={theme.mutedText}
-                multiline
-              />
-            </View>
-
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.textInputHeader}>Location</Text>
-              <BottomSheetTextInput
-                ref={locationInputRef}
-                value={location}
-                onChangeText={setLocation}
-                placeholder="Enter the location..."
-                style={[
-                  styles.textInputField,
-                  {
-                    backgroundColor: theme.background,
-                    color: theme.primaryText,
-                  },
-                ]}
-                placeholderTextColor={theme.mutedText}
-              />
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 8,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+          <View style={styles.sheetContainer}>
+            <BottomSheetScrollView
+              contentContainerStyle={styles.formContainer}
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
             >
-              <Pressable
-                onPress={openCalendarPicker}
-                style={styles.timePickerBtn}
-              >
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              {error && (
+                <Text
+                  style={{ color: "red", textAlign: "left", marginBottom: 8 }}
                 >
-                  <Ionicons
-                    name="calendar-clear-outline"
-                    size={18}
-                    color={theme.primaryText}
-                  />
-                  <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
-                    Date
-                  </Text>
-                </View>
-                <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
-                  {date.split("-").reverse().join("/")}
+                  {error}
                 </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setShowStartPicker(true)}
-                style={styles.timePickerBtn}
-              >
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                >
-                  <Ionicons
-                    name="time-outline"
-                    size={18}
-                    color={theme.primaryText}
-                  />
-                  <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
-                    Start time
-                  </Text>
-                </View>
-                <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
-                  {startTime.toLocaleTimeString(undefined, {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setShowEndPicker(true)}
-                style={styles.timePickerBtn}
-              >
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                >
-                  <Ionicons
-                    name="time-outline"
-                    size={18}
-                    color={theme.primaryText}
-                  />
-                  <Text style={{ color: theme.primaryText, fontWeight: "300" }}>
-                    End time
-                  </Text>
-                </View>
-                <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
-                  {endTime.toLocaleTimeString(undefined, {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </Text>
-              </Pressable>
-
-              {showStartPicker && (
-                <DateTimePicker
-                  value={startTime}
-                  mode="time"
-                  onChange={handleStartTimeChange}
-                />
               )}
-              {showEndPicker && (
-                <DateTimePicker
-                  value={endTime}
-                  mode="time"
-                  onChange={handleEndTimeChange}
+
+              <View style={{ marginBottom: 12 }}>
+                <Text style={styles.textInputHeader}>Title</Text>
+                <BottomSheetTextInput
+                  ref={titleInputRef}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Enter your title..."
+                  style={[
+                    styles.textInputField,
+                    {
+                      backgroundColor: theme.background,
+                      color: theme.primaryText,
+                    },
+                  ]}
+                  placeholderTextColor={theme.mutedText}
                 />
+              </View>
+
+              <View style={{ marginBottom: 12 }}>
+                <Text style={styles.textInputHeader}>Description</Text>
+                <BottomSheetTextInput
+                  ref={descriptionInputRef}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Enter your description..."
+                  style={[
+                    styles.textInputField,
+                    {
+                      backgroundColor: theme.background,
+                      color: theme.primaryText,
+                      height: 90,
+                      textAlignVertical: "top",
+                    },
+                  ]}
+                  placeholderTextColor={theme.mutedText}
+                  multiline
+                />
+              </View>
+
+              <View style={{ marginBottom: 12 }}>
+                <Text style={styles.textInputHeader}>Location</Text>
+                <BottomSheetTextInput
+                  ref={locationInputRef}
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholder="Enter the location..."
+                  style={[
+                    styles.textInputField,
+                    {
+                      backgroundColor: theme.background,
+                      color: theme.primaryText,
+                    },
+                  ]}
+                  placeholderTextColor={theme.mutedText}
+                />
+              </View>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Pressable
+                  onPress={openCalendarPicker}
+                  style={styles.timePickerBtn}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name="calendar-clear-outline"
+                      size={18}
+                      color={theme.primaryText}
+                    />
+                    <Text
+                      style={{ color: theme.primaryText, fontWeight: "300" }}
+                    >
+                      Date
+                    </Text>
+                  </View>
+                  <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
+                    {date.split("-").reverse().join("/")}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowStartPicker(true)}
+                  style={styles.timePickerBtn}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={18}
+                      color={theme.primaryText}
+                    />
+                    <Text
+                      style={{ color: theme.primaryText, fontWeight: "300" }}
+                    >
+                      Start time
+                    </Text>
+                  </View>
+                  <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
+                    {startTime.toLocaleTimeString(undefined, {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowEndPicker(true)}
+                  style={styles.timePickerBtn}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={18}
+                      color={theme.primaryText}
+                    />
+                    <Text
+                      style={{ color: theme.primaryText, fontWeight: "300" }}
+                    >
+                      End time
+                    </Text>
+                  </View>
+                  <Text style={{ color: theme.mutedText, fontWeight: "500" }}>
+                    {endTime.toLocaleTimeString(undefined, {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </Pressable>
+
+                {showStartPicker && (
+                  <DateTimePicker
+                    value={startTime}
+                    mode="time"
+                    onChange={handleStartTimeChange}
+                  />
+                )}
+                {showEndPicker && (
+                  <DateTimePicker
+                    value={endTime}
+                    mode="time"
+                    onChange={handleEndTimeChange}
+                  />
+                )}
+              </View>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 12,
+                }}
+              >
+                <Text style={styles.textInputHeader}>Recurring</Text>
+                <Checkbox
+                  value={isRecurring}
+                  onValueChange={setIsRecurring}
+                  color={theme.accent}
+                />
+              </View>
+
+              {isRecurring && (
+                <View style={{ marginTop: 8 }}>
+                  <View style={{ flexDirection: "row" }}>
+                    <View style={{ gap: 6, flex: 1, alignItems: "center" }}>
+                      <Text
+                        style={{ color: theme.mutedText, fontWeight: "300" }}
+                      >
+                        Frequency
+                      </Text>
+                      <RecurrenceFrequencyPopupMenu
+                        activeFrequency={frequency}
+                        setActiveFrequency={setFrequency}
+                      />
+                    </View>
+
+                    <View style={{ gap: 6, flex: 1, alignItems: "center" }}>
+                      <Text
+                        style={{ color: theme.mutedText, fontWeight: "300" }}
+                      >
+                        Interval
+                      </Text>
+                      <RecurrenceIntervalPopupMenu
+                        activeInterval={interval}
+                        setActiveInterval={setInterval}
+                        activeFrequency={frequency}
+                      />
+                    </View>
+                  </View>
+
+                  <Text
+                    style={{
+                      color: theme.mutedText,
+                      fontWeight: "300",
+                      fontStyle: "italic",
+                      fontSize: 12,
+                      marginTop: 10,
+                    }}
+                  >
+                    {recurrenceText}
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      marginTop: 22,
+                      backgroundColor: theme.background,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Pressable
+                      style={[
+                        styles.endRecurrenceBtnToggle,
+                        {
+                          backgroundColor:
+                            endRecurrenceOption === "times"
+                              ? theme.accent
+                              : "transparent",
+                        },
+                      ]}
+                      onPress={() => setEndRecurrenceOption("times")}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            endRecurrenceOption === "times"
+                              ? theme.onAccent
+                              : theme.primaryText,
+                        }}
+                      >
+                        Repeat N times
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={[
+                        styles.endRecurrenceBtnToggle,
+                        {
+                          backgroundColor:
+                            endRecurrenceOption === "until"
+                              ? theme.accent
+                              : "transparent",
+                        },
+                      ]}
+                      onPress={() => setEndRecurrenceOption("until")}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            endRecurrenceOption === "until"
+                              ? theme.onAccent
+                              : theme.primaryText,
+                        }}
+                      >
+                        Repeat until
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <View style={{}}>
+                    {endRecurrenceOption === "times" && (
+                      <View style={{ marginTop: 8 }}>
+                        <Text
+                          style={{
+                            color: theme.mutedText,
+                            fontWeight: "300",
+                            marginBottom: 2,
+                          }}
+                        >
+                          Enter numerical amount
+                        </Text>
+                        <BottomSheetTextInput
+                          ref={nTimesAmountInputRef}
+                          value={nTimesAmount}
+                          onChangeText={setNTimesAmount}
+                          placeholder="Enter number of occurences..."
+                          style={[
+                            styles.textInputField,
+                            {
+                              backgroundColor: theme.background,
+                              color: theme.primaryText,
+                            },
+                          ]}
+                          placeholderTextColor={theme.mutedText}
+                          keyboardType="number-pad"
+                        />
+                      </View>
+                    )}
+
+                    {endRecurrenceOption === "until" && (
+                      <View
+                        style={{
+                          marginTop: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: theme.mutedText,
+                            fontWeight: "300",
+                            marginBottom: 2,
+                          }}
+                        >
+                          Select a valid end date
+                        </Text>
+                        <Pressable
+                          onPress={openEndDatePicker}
+                          style={{
+                            backgroundColor: theme.background,
+                            paddingVertical: 10,
+                            paddingHorizontal: 10,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Ionicons
+                              name="calendar-clear-outline"
+                              size={18}
+                              color={theme.primaryText}
+                            />
+                            <Text
+                              style={{
+                                color: theme.primaryText,
+                                fontWeight: "300",
+                              }}
+                            >
+                              End date
+                            </Text>
+                          </View>
+                          <Text
+                            style={{
+                              color: theme.mutedText,
+                              fontWeight: "500",
+                            }}
+                          >
+                            {endDate.split("-").reverse().join("/")}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                </View>
               )}
-            </View>
+            </BottomSheetScrollView>
 
             <TouchableOpacity
               style={[styles.submitBtn, { marginBottom: insets.bottom + 12 }]}
@@ -373,7 +654,7 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
                 {isSubmitting ? "Saving..." : editingId ? "Save" : "Create"}
               </Text>
             </TouchableOpacity>
-          </BottomSheetView>
+          </View>
         </BottomSheetModal>
 
         <CalendarPickerModal
@@ -382,6 +663,14 @@ const EventCreationBottomSheet = forwardRef<EventSheetHandle, Props>(
           onModalHide={handleCalendarModalHide}
           dueDate={date}
           setDueDate={setDate}
+        />
+
+        <CalendarPickerModal
+          isModalVisible={endDateModalVisible}
+          onClose={closeEndDatePicker}
+          onModalHide={handleCalendarModalHide}
+          dueDate={endDate}
+          setDueDate={setEndDate}
         />
       </>
     );
@@ -405,8 +694,10 @@ const createStyles = (theme: any) =>
     },
     sheetContainer: {
       flex: 1,
-      height: "100%",
       paddingHorizontal: 18,
+    },
+    formContainer: {
+      paddingBottom: 30,
     },
     textInputHeader: {
       color: theme.primaryText,
@@ -433,7 +724,13 @@ const createStyles = (theme: any) =>
       alignItems: "center",
       padding: 9,
       borderRadius: 8,
-      marginTop: "auto",
+      marginHorizontal: 18,
+    },
+    endRecurrenceBtnToggle: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 8,
     },
   });
 
